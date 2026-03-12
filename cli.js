@@ -38,7 +38,31 @@ const SKILLS_SRC = path.resolve(__dirname, 'skills');
 const GLOBAL_SKILLS_DIR = path.join(HOME, '.agents', 'skills');
 const GLOBAL_SYMLINK = path.join(GLOBAL_SKILLS_DIR, 'superpowers');
 const CONFIG_FILE = path.join(HOME, '.codex', 'config.toml');
+const AGENTS_FILE = path.join(HOME, '.codex', 'AGENTS.md');
 const REPO_URL = 'https://github.com/yigitkonur/superpowers-codex.git';
+
+// ── AGENTS.md block (matched markers for clean install/uninstall) ────────────
+
+const SUPERPOWERS_BLOCK_START = '<!-- superpowers:start -->';
+const SUPERPOWERS_BLOCK_END = '<!-- superpowers:end -->';
+
+const AGENTS_BLOCK = `${SUPERPOWERS_BLOCK_START}
+## Superpowers Workflow
+
+Before responding to ANY task, check for applicable superpowers skills.
+Skills are loaded from ~/.agents/skills/superpowers/ and auto-activate
+when your task matches their description.
+
+Pipeline: **brainstorming** → **writing-plans** → **using-git-worktrees** →
+**subagent-driven-development** → **test-driven-development** →
+**requesting-code-review** → **verification-before-completion** →
+**finishing-a-development-branch**
+
+Iron laws (zero exceptions):
+1. No production code without a failing test first
+2. No fixes without root cause investigation
+3. No completion claims without running verification fresh
+${SUPERPOWERS_BLOCK_END}`;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -102,6 +126,58 @@ function commandExists(cmd) {
   }
 }
 
+// ── AGENTS.md management ─────────────────────────────────────────────────────
+
+function agentsMdPath(mode) {
+  return mode === 'project'
+    ? path.join(process.cwd(), 'AGENTS.md')
+    : AGENTS_FILE;
+}
+
+function addToAgentsMd(mode) {
+  const filePath = agentsMdPath(mode);
+  const dir = path.dirname(filePath);
+  if (!fileExists(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  if (fileExists(filePath)) {
+    const content = fs.readFileSync(filePath, 'utf8');
+    if (content.includes(SUPERPOWERS_BLOCK_START)) {
+      ok('AGENTS.md already has superpowers block');
+      return;
+    }
+    fs.writeFileSync(filePath, content.trimEnd() + '\n\n' + AGENTS_BLOCK + '\n');
+    ok(`Appended superpowers block to AGENTS.md`);
+  } else {
+    fs.writeFileSync(filePath, AGENTS_BLOCK + '\n');
+    ok(`Created AGENTS.md with superpowers block`);
+  }
+}
+
+function removeFromAgentsMd(mode) {
+  // Check both user-level and project-level for 'all' mode
+  const paths = mode === 'all'
+    ? [AGENTS_FILE, path.join(process.cwd(), 'AGENTS.md')]
+    : [agentsMdPath(mode)];
+
+  for (const filePath of paths) {
+    if (!fileExists(filePath)) continue;
+    let content = fs.readFileSync(filePath, 'utf8');
+    const si = content.indexOf(SUPERPOWERS_BLOCK_START);
+    const ei = content.indexOf(SUPERPOWERS_BLOCK_END);
+    if (si !== -1 && ei !== -1) {
+      content = content.slice(0, si).trimEnd() + '\n' +
+                content.slice(ei + SUPERPOWERS_BLOCK_END.length).trimStart();
+      const cleaned = content.trim();
+      if (cleaned.length === 0) {
+        fs.writeFileSync(filePath, '\n');
+      } else {
+        fs.writeFileSync(filePath, cleaned + '\n');
+      }
+      ok(`Removed superpowers block from ${filePath}`);
+    }
+  }
+}
+
 // ── Install ─────────────────────────────────────────────────────────────────
 
 async function install(mode) {
@@ -109,7 +185,7 @@ async function install(mode) {
 
   const isGlobal = mode === 'global';
   const isProject = mode === 'project';
-  const totalSteps = isGlobal ? 5 : 4;
+  const totalSteps = isGlobal ? 6 : 5;
 
   // Determine skills source — if running from the cloned repo, use local skills/
   // If running via npx from a temp dir, we need to clone or reference the repo
@@ -284,9 +360,15 @@ description = "Read-only codebase explorer for gathering evidence before changes
     }
   }
 
-  // ── Step N+2: Verify ──
+  // ── Step N+2: AGENTS.md ──
 
-  const verifyStep = isGlobal ? 5 : 4;
+  const agentsStep = isGlobal ? 5 : 4;
+  step(agentsStep, totalSteps, 'Configuring AGENTS.md');
+  addToAgentsMd(isProject ? 'project' : 'global');
+
+  // ── Step N+3: Verify ──
+
+  const verifyStep = isGlobal ? 6 : 5;
   step(verifyStep, totalSteps, 'Verifying installation');
 
   const skillCount = countSkills(skillsSource);
@@ -322,7 +404,7 @@ async function uninstall(mode) {
 
   // ── Step 1: Remove symlink ──
 
-  step(1, 3, `Removing skills symlink (${mode === 'all' ? 'all scopes' : mode})`);
+  step(1, 4, `Removing skills symlink (${mode === 'all' ? 'all scopes' : mode})`);
 
   // Check global
   if (removeGlobal && isSymlink(GLOBAL_SYMLINK)) {
@@ -354,7 +436,7 @@ async function uninstall(mode) {
 
   // ── Step 2: Optionally remove cloned repo ──
 
-  step(2, 3, 'Cloned repository');
+  step(2, 4, 'Cloned repository');
 
   if (fileExists(REPO_DIR)) {
     const answer = await ask(
@@ -370,9 +452,14 @@ async function uninstall(mode) {
     info('No cloned repository found');
   }
 
-  // ── Step 3: Config cleanup ──
+  // ── Step 3: AGENTS.md cleanup ──
 
-  step(3, 3, 'Configuration');
+  step(3, 4, 'Cleaning AGENTS.md');
+  removeFromAgentsMd(mode);
+
+  // ── Step 4: Config cleanup ──
+
+  step(4, 4, 'Configuration');
 
   if (fileExists(CONFIG_FILE)) {
     const raw = fs.readFileSync(CONFIG_FILE, 'utf8');

@@ -1,6 +1,6 @@
 {
   "name": "superpowers-codex",
-  "version": "5.0.1-codex.1",
+  "version": "5.0.1",
   "description": "Codex-native fork of obra/superpowers — structured agentic workflows for OpenAI Codex CLI",
   "bin": {
     "superpowers-codex": "./cli.js"
