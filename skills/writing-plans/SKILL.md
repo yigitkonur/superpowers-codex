@@ -49,7 +49,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED: Use $subagent-driven-development (if subagents available) or $executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -114,7 +114,7 @@ git commit -m "feat: add specific feature"
 
 After completing each chunk of the plan:
 
-1. Dispatch plan-document-reviewer subagent (see plan-document-reviewer-prompt.md) for the current chunk
+1. Dispatch plan-document-reviewer via spawn_agent (see plan-document-reviewer-prompt.md) for the current chunk
    - Provide: chunk content, path to spec document
 2. If ❌ Issues Found:
    - Fix the issues in the chunk
@@ -137,11 +137,11 @@ After saving the plan:
 
 **Execution path depends on harness capabilities:**
 
-**If harness has subagents (Claude Code, etc.):**
-- **REQUIRED:** Use superpowers:subagent-driven-development
+**If harness has subagents (Codex, Claude Code, etc.):**
+- **REQUIRED:** Use $subagent-driven-development
 - Do NOT offer a choice - subagent-driven is the standard approach
 - Fresh subagent per task + two-stage review
 
 **If harness does NOT have subagents:**
-- Execute plan in current session using superpowers:executing-plans
+- Execute plan in current session using $executing-plans
 - Batch execution with checkpoints for review

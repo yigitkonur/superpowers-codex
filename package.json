@@ -1,0 +1,40 @@
+{
+  "name": "superpowers-codex",
+  "version": "5.0.1-codex.1",
+  "description": "Codex-native fork of obra/superpowers — structured agentic workflows for OpenAI Codex CLI",
+  "bin": {
+    "superpowers-codex": "./cli.js"
+  },
+  "keywords": [
+    "codex",
+    "openai",
+    "superpowers",
+    "agentic",
+    "multi-agent",
+    "workflow",
+    "skills",
+    "tdd",
+    "code-review",
+    "cli"
+  ],
+  "author": "Yigit Konur (https://github.com/yigitkonur)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yigitkonur/superpowers-codex.git"
+  },
+  "homepage": "https://github.com/yigitkonur/superpowers-codex",
+  "bugs": {
+    "url": "https://github.com/yigitkonur/superpowers-codex/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "cli.js",
+    "skills/",
+    "install-codex.sh",
+    "LICENSE",
+    "README.md"
+  ]
+}

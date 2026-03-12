@@ -63,12 +63,12 @@ Each agent gets:
 
 ### 3. Dispatch in Parallel
 
-```typescript
-// In Claude Code / AI environment
-Task("Fix agent-tool-abort.test.ts failures")
-Task("Fix batch-completion-behavior.test.ts failures")
-Task("Fix tool-approval-race-conditions.test.ts failures")
-// All three run concurrently
+```python
+# Codex multi-agent pattern
+spawn_agent(role="investigator", prompt="Fix agent-tool-abort.test.ts failures")
+spawn_agent(role="investigator", prompt="Fix batch-completion-behavior.test.ts failures")
+spawn_agent(role="investigator", prompt="Fix tool-approval-race-conditions.test.ts failures")
+# All three run concurrently — use wait() to collect results, close_agent() to free slots
 ```
 
 ### 4. Review and Integrate

@@ -1,7 +1,7 @@
 {
   "name": "brainstorm-server",
   "version": "1.0.0",
-  "description": "Visual brainstorming companion server for Claude Code",
+  "description": "Visual brainstorming companion server for Codex CLI",
   "main": "index.js",
   "dependencies": {
     "chokidar": "^3.5.3",

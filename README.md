@@ -1,180 +1,191 @@
-# Superpowers
+# superpowers-codex
 
-Superpowers is a complete software development workflow for your coding agents, built on top of a set of composable "skills" and some initial instructions that make sure your agent uses them.
+Codex-native fork of [obra/superpowers](https://github.com/obra/superpowers) — 14 composable skills that turn Codex CLI's multi-agent primitives into a structured software development workflow.
 
-## How it works
-
-It starts from the moment you fire up your coding agent. As soon as it sees that you're building something, it *doesn't* just jump into trying to write code. Instead, it steps back and asks you what you're really trying to do. 
-
-Once it's teased a spec out of the conversation, it shows it to you in chunks short enough to actually read and digest. 
-
-After you've signed off on the design, your agent puts together an implementation plan that's clear enough for an enthusiastic junior engineer with poor taste, no judgement, no project context, and an aversion to testing to follow. It emphasizes true red/green TDD, YAGNI (You Aren't Gonna Need It), and DRY. 
-
-Next up, once you say "go", it launches a *subagent-driven-development* process, having agents work through each engineering task, inspecting and reviewing their work, and continuing forward. It's not uncommon for Claude to be able to work autonomously for a couple hours at a time without deviating from the plan you put together.
-
-There's a bunch more to it, but that's the core of the system. And because the skills trigger automatically, you don't need to do anything special. Your coding agent just has Superpowers.
-
-
-## Sponsorship
-
-If Superpowers has helped you do stuff that makes money and you are so inclined, I'd greatly appreciate it if you'd consider [sponsoring my opensource work](https://github.com/sponsors/obra).
-
-Thanks! 
-
-- Jesse
-
-
-## Installation
-
-**Note:** Installation differs by platform. Claude Code or Cursor have built-in plugin marketplaces. Codex and OpenCode require manual setup.
-
-### Claude Code Official Marketplace
-
-Superpowers is available via the [official Claude plugin marketplace](https://claude.com/plugins/superpowers)
-
-Install the plugin from Claude marketplace:
+## Install
 
 ```bash
-/plugin install superpowers@claude-plugins-official
+npx superpowers-codex install
 ```
 
-### Claude Code (via Plugin Marketplace)
+Interactive. Shows each step. Detects existing installs. Safe to re-run.
 
-In Claude Code, register the marketplace first:
+Or with flags:
 
 ```bash
-/plugin marketplace add obra/superpowers-marketplace
+npx superpowers-codex install --global    # ~/.agents/skills/ (user-level)
+npx superpowers-codex install --project   # .agents/skills/   (project-level)
 ```
 
-Then install the plugin from this marketplace:
+## What This Is
+
+[obra/superpowers](https://github.com/obra/superpowers) is a skill-based agentic workflow for Claude Code. It enforces design-before-code, TDD, two-stage code review, and evidence-based verification through 14 composable skills.
+
+This fork ports every skill to work natively with **OpenAI Codex CLI** — replacing Claude Code tool patterns with Codex equivalents:
+
+```
+  Claude Code                    Codex CLI
+  ───────────                    ─────────
+  Task tool (subagent_type)  →   spawn_agent(role="X")
+  TodoWrite                  →   update_plan
+  Skill("superpowers:X")     →   $X prefix
+  CLAUDE.md                  →   AGENTS.md
+  Edit tool                  →   apply_patch
+```
+
+[Why this fork exists →](docs/codex/01-why-fork.md)
+
+## How It Differs from Native Codex Multi-Agent
+
+Codex ships with `spawn_agent`, `wait`, and `close_agent`. Powerful primitives. But primitives without process:
+
+```
+  Raw Codex                          With Superpowers
+  ─────────                          ────────────────
+
+  "build feature X"                  "build feature X"
+       │                                  │
+       v                                  v
+  agent writes code              $brainstorming
+       │                           questions → approaches → spec
+       v                                  │
+  maybe spawns a helper                   v
+       │                          $writing-plans
+       v                           2-5 min tasks with exact paths
+  "done"                                  │
+  (no verification)                       v
+                                  $subagent-driven-development
+                                   per task:
+                                     spawn_agent(implementer)
+                                     spawn_agent(spec-reviewer)
+                                     spawn_agent(code-reviewer)
+                                          │
+                                          v
+                                  $finishing-a-development-branch
+                                   verify → merge/PR/keep/discard
+```
+
+| aspect | raw codex | with superpowers |
+|---|---|---|
+| design validation | none | mandatory spec review loop |
+| task granularity | "build the feature" | 2-5 minute steps |
+| test discipline | optional | iron law: no code without failing test |
+| code review | none | two-stage: spec compliance, then quality |
+| verification | agent says "done" | fresh test run + evidence |
+| debugging | guess and retry | 4-phase root cause investigation |
+| agent roles | generic | typed: implementer, spec-reviewer, code-reviewer |
+
+[Full comparison →](docs/codex/02-vs-native-codex.md)
+
+## The Pipeline
+
+Every non-trivial task follows this pipeline. Skills fire automatically.
+
+```
+  $brainstorming ──→ $writing-plans ──→ $subagent-driven-development ──→ $finishing
+     design             tasks              implement + review              merge
+```
+
+Supporting skills fire within the pipeline:
+
+- `$using-git-worktrees` — isolation before implementation
+- `$test-driven-development` — RED → GREEN → REFACTOR
+- `$systematic-debugging` — root cause before fixes
+- `$requesting-code-review` — quality gate between tasks
+- `$verification-before-completion` — evidence before claims
+
+[Full pipeline walkthrough →](docs/codex/03-pipeline.md)
+
+## The Three Iron Laws
+
+1. **TDD** — No production code without a failing test first
+2. **Root Cause First** — No fixes without Phase 1 investigation
+3. **Evidence Before Claims** — No "done" without running verification fresh
+
+## Skills Reference
+
+| phase | skill | what it does |
+|---|---|---|
+| design | `$brainstorming` | socratic design refinement → spec document |
+| design | `$writing-plans` | breaks spec into 2-5 min tasks with exact paths |
+| execution | `$subagent-driven-development` | fresh agent per task + two-stage review |
+| execution | `$executing-plans` | single-session batch execution |
+| execution | `$dispatching-parallel-agents` | parallel agents for independent problems |
+| discipline | `$test-driven-development` | RED-GREEN-REFACTOR cycle |
+| discipline | `$systematic-debugging` | 4-phase root cause investigation |
+| discipline | `$verification-before-completion` | evidence before claims |
+| review | `$requesting-code-review` | dispatches code-reviewer agent |
+| review | `$receiving-code-review` | evaluates feedback technically |
+| infra | `$using-git-worktrees` | isolated workspace on new branch |
+| infra | `$finishing-a-development-branch` | merge / PR / keep / discard |
+| meta | `$using-superpowers` | routes to correct skill at session start |
+| meta | `$writing-skills` | TDD for documentation |
+
+[Full skills reference →](docs/codex/05-skills-reference.md)
+
+## Configuration
+
+Minimum `~/.codex/config.toml`:
+
+```toml
+[features]
+multi_agent = true
+```
+
+Recommended — with agent roles:
+
+```toml
+[features]
+multi_agent = true
+
+[agents]
+max_threads = 6
+
+[agents.implementer]
+description = "Implementation-focused agent. Follows TDD, implements one task at a time."
+
+[agents.spec-reviewer]
+description = "Spec compliance reviewer. Verifies code matches requirements exactly."
+
+[agents.code-reviewer]
+description = "Code quality reviewer. Reviews for clean code, maintainability."
+```
+
+Add the pipeline to `~/.codex/AGENTS.md` — see [configuration docs →](docs/codex/06-configuration.md)
+
+## What Changed from Upstream
+
+| pattern | upstream (claude code) | this fork (codex) |
+|---|---|---|
+| dispatch subagent | `Task` tool | `spawn_agent` with role |
+| track plan | `TodoWrite` | `update_plan` |
+| invoke skill | `Skill("superpowers:X")` | `$X` prefix |
+| project config | `CLAUDE.md` | `AGENTS.md` |
+
+All 14 skill files, 5 prompt templates, and supplementary references updated.
+
+[Full change log →](docs/codex/04-changes-from-upstream.md)
+
+## Uninstall
 
 ```bash
-/plugin install superpowers@superpowers-marketplace
+npx superpowers-codex uninstall
 ```
 
-### Cursor (via Plugin Marketplace)
+Removes symlinks. Optionally removes the cloned repo. Config left for you to clean up.
 
-In Cursor Agent chat, install from marketplace:
-
-```text
-/add-plugin superpowers
-```
-
-or search for "superpowers" in the plugin marketplace.
-
-### Codex
-
-Tell Codex:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/.codex/INSTALL.md
-```
-
-**Detailed docs:** [docs/README.codex.md](docs/README.codex.md)
-
-### OpenCode
-
-Tell OpenCode:
-
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/.opencode/INSTALL.md
-```
-
-**Detailed docs:** [docs/README.opencode.md](docs/README.opencode.md)
-
-### Gemini CLI
+## Status
 
 ```bash
-gemini extensions install https://github.com/obra/superpowers
+npx superpowers-codex status
 ```
 
-To update:
+Shows symlink state, skill count, and config status.
 
-```bash
-gemini extensions update superpowers
-```
+## Credits
 
-### Verify Installation
-
-Start a new session in your chosen platform and ask for something that should trigger a skill (for example, "help me plan this feature" or "let's debug this issue"). The agent should automatically invoke the relevant superpowers skill.
-
-## The Basic Workflow
-
-1. **brainstorming** - Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation. Saves design document.
-
-2. **using-git-worktrees** - Activates after design approval. Creates isolated workspace on new branch, runs project setup, verifies clean test baseline.
-
-3. **writing-plans** - Activates with approved design. Breaks work into bite-sized tasks (2-5 minutes each). Every task has exact file paths, complete code, verification steps.
-
-4. **subagent-driven-development** or **executing-plans** - Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
-
-5. **test-driven-development** - Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
-
-6. **requesting-code-review** - Activates between tasks. Reviews against plan, reports issues by severity. Critical issues block progress.
-
-7. **finishing-a-development-branch** - Activates when tasks complete. Verifies tests, presents options (merge/PR/keep/discard), cleans up worktree.
-
-**The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
-
-## What's Inside
-
-### Skills Library
-
-**Testing**
-- **test-driven-development** - RED-GREEN-REFACTOR cycle (includes testing anti-patterns reference)
-
-**Debugging**
-- **systematic-debugging** - 4-phase root cause process (includes root-cause-tracing, defense-in-depth, condition-based-waiting techniques)
-- **verification-before-completion** - Ensure it's actually fixed
-
-**Collaboration** 
-- **brainstorming** - Socratic design refinement
-- **writing-plans** - Detailed implementation plans
-- **executing-plans** - Batch execution with checkpoints
-- **dispatching-parallel-agents** - Concurrent subagent workflows
-- **requesting-code-review** - Pre-review checklist
-- **receiving-code-review** - Responding to feedback
-- **using-git-worktrees** - Parallel development branches
-- **finishing-a-development-branch** - Merge/PR decision workflow
-- **subagent-driven-development** - Fast iteration with two-stage review (spec compliance, then code quality)
-
-**Meta**
-- **writing-skills** - Create new skills following best practices (includes testing methodology)
-- **using-superpowers** - Introduction to the skills system
-
-## Philosophy
-
-- **Test-Driven Development** - Write tests first, always
-- **Systematic over ad-hoc** - Process over guessing
-- **Complexity reduction** - Simplicity as primary goal
-- **Evidence over claims** - Verify before declaring success
-
-Read more: [Superpowers for Claude Code](https://blog.fsck.com/2025/10/09/superpowers/)
-
-## Contributing
-
-Skills live directly in this repository. To contribute:
-
-1. Fork the repository
-2. Create a branch for your skill
-3. Follow the `writing-skills` skill for creating and testing new skills
-4. Submit a PR
-
-See `skills/writing-skills/SKILL.md` for the complete guide.
-
-## Updating
-
-Skills update automatically when you update the plugin:
-
-```bash
-/plugin update superpowers
-```
+Original [superpowers](https://github.com/obra/superpowers) by [Jesse Vincent (obra)](https://github.com/obra). If this has helped you, consider [sponsoring his work](https://github.com/sponsors/obra).
 
 ## License
 
-MIT License - see LICENSE file for details
-
-## Support
-
-- **Issues**: https://github.com/obra/superpowers/issues
-- **Marketplace**: https://github.com/obra/superpowers-marketplace
+MIT — see [LICENSE](LICENSE)
