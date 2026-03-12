@@ -22,12 +22,13 @@ const c = {
   magenta: '\x1b[35m',
 };
 
-const ok = (msg) => console.log(`  ${c.green}✔${c.reset} ${msg}`);
+const ok = (msg) => console.log(`  ${c.green}✓${c.reset} ${msg}`);
 const warn = (msg) => console.log(`  ${c.yellow}⚠${c.reset} ${msg}`);
-const fail = (msg) => console.log(`  ${c.red}✘${c.reset} ${msg}`);
+const fail = (msg) => console.log(`  ${c.red}✗${c.reset} ${msg}`);
 const info = (msg) => console.log(`  ${c.cyan}→${c.reset} ${msg}`);
 const step = (n, total, msg) =>
   console.log(`\n${c.bold}[${n}/${total}]${c.reset} ${msg}`);
+const banner = (msg) => console.log(`\n${c.magenta}${c.bold}${msg}${c.reset}`);
 
 // ── Paths ───────────────────────────────────────────────────────────────────
 
@@ -104,9 +105,7 @@ function commandExists(cmd) {
 // ── Install ─────────────────────────────────────────────────────────────────
 
 async function install(mode) {
-  console.log(
-    `\n${c.bold}${c.magenta}superpowers-codex${c.reset} ${c.dim}— installer${c.reset}\n`
-  );
+  banner("superpowers-codex — installer");
 
   const isGlobal = mode === 'global';
   const isProject = mode === 'project';
@@ -271,27 +270,22 @@ async function install(mode) {
 
   // ── Done ──
 
-  console.log(
-    `\n${c.bold}${c.green}Installation complete!${c.reset}\n`
-  );
-  console.log(`  Skills: ${c.cyan}${skillCount}${c.reset} loaded from ${c.dim}${skillsSource}${c.reset}`);
-  console.log(`  Symlink: ${c.dim}${symlinkTarget}${c.reset}`);
-  console.log(
-    `\n  ${c.bold}Next steps:${c.reset}`
-  );
-  console.log(`  1. Start a new Codex session`);
-  console.log(`  2. Ask it to build something — $brainstorming fires automatically`);
-  console.log(
-    `  3. Reference skills with ${c.cyan}$skill-name${c.reset} in prompts\n`
-  );
+  banner("superpowers installed");
+  console.log();
+  console.log(`  location:   ${c.dim}${symlinkTarget}${c.reset}`);
+  console.log(`  skills:     ${c.cyan}${skillCount}${c.reset} loaded`);
+  console.log();
+  console.log(`  next steps:`);
+  console.log(`    start a new codex session`);
+  console.log(`    ask it to build something — $brainstorming fires automatically`);
+  console.log(`    reference skills with ${c.cyan}$skill-name${c.reset} in prompts`);
+  console.log();
 }
 
 // ── Uninstall ───────────────────────────────────────────────────────────────
 
 async function uninstall(mode) {
-  console.log(
-    `\n${c.bold}${c.magenta}superpowers-codex${c.reset} ${c.dim}— uninstaller${c.reset}\n`
-  );
+  banner("superpowers-codex — uninstaller");
 
   const removeGlobal = mode === 'global' || mode === 'all';
   const removeProject = mode === 'project' || mode === 'all';
@@ -366,9 +360,7 @@ async function uninstall(mode) {
 // ── Status ──────────────────────────────────────────────────────────────────
 
 function status() {
-  console.log(
-    `\n${c.bold}${c.magenta}superpowers-codex${c.reset} ${c.dim}— status${c.reset}\n`
-  );
+  banner("superpowers-codex — status");
 
   // Global symlink
   if (isSymlink(GLOBAL_SYMLINK)) {
@@ -422,24 +414,36 @@ async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
+  // Support flag-style commands for parity with superpowers-droid
+  if (args.includes('--uninstall')) {
+    let uMode = 'all';
+    if (args.includes('--project')) uMode = 'project';
+    else if (args.includes('--user') || args.includes('--global')) uMode = 'global';
+    await uninstall(uMode);
+    return;
+  }
+  if (args.includes('--status')) {
+    status();
+    return;
+  }
+
   if (!command || command === '--help' || command === '-h') {
     console.log(`
-${c.bold}superpowers-codex${c.reset} — Structured agentic workflows for Codex CLI
+${c.bold}superpowers-codex${c.reset} — structured agentic workflows for Codex CLI
 
-${c.bold}Usage:${c.reset}
-  npx superpowers-codex install            Interactive install (prompts for scope)
-  npx superpowers-codex install --global   User-level install (~/.agents/skills/)
-  npx superpowers-codex install --project  Project-level install (.agents/skills/)
-  npx superpowers-codex uninstall           Remove all symlinks and optionally clean up
-  npx superpowers-codex uninstall --global  Remove user-level symlink only
-  npx superpowers-codex uninstall --project Remove project-level symlink only
-  npx superpowers-codex status              Show current install state
+${c.bold}usage:${c.reset}
+  npx superpowers-codex install              interactive install
+  npx superpowers-codex install --user       user-level (~/.agents/skills/)
+  npx superpowers-codex install --project    project-level (.agents/skills/)
+  npx superpowers-codex uninstall            remove all symlinks
+  npx superpowers-codex uninstall --user     remove user-level only
+  npx superpowers-codex uninstall --project  remove project-level only
+  npx superpowers-codex status               show current install state
 
-${c.bold}What it does:${c.reset}
-  Installs 14 agentic workflow skills for OpenAI Codex CLI.
-  Symlink-based — no files copied, updates automatically with git pull.
+${c.bold}aliases:${c.reset}
+  --global is accepted as an alias for --user
 
-${c.bold}More info:${c.reset}
+${c.bold}more info:${c.reset}
   https://github.com/yigitkonur/superpowers-codex
 `);
     return;
@@ -447,17 +451,21 @@ ${c.bold}More info:${c.reset}
 
   switch (command) {
     case 'install': {
-      let mode = 'global'; // default
+      let mode = 'global'; // default = user-level
       if (args.includes('--project')) {
         mode = 'project';
-      } else if (args.includes('--global')) {
+      } else if (args.includes('--user') || args.includes('--global')) {
         mode = 'global';
       } else {
-        // Interactive: ask
-        const answer = await ask(
-          `Install scope — ${c.bold}global${c.reset} (user-level) or ${c.bold}project${c.reset} (this directory)? [global/project]`
-        );
-        mode = answer.toLowerCase().startsWith('p') ? 'project' : 'global';
+        // Interactive: numbered choice UI
+        console.log();
+        console.log(`  ${c.cyan}→${c.reset} ${c.bold}1.${c.reset} user-level`);
+        console.log(`     ${c.dim}available in all sessions (recommended)${c.reset}`);
+        console.log(`    ${c.bold}2.${c.reset} project-level`);
+        console.log(`     ${c.dim}only this project${c.reset}`);
+        console.log();
+        const answer = await ask('[1/2]');
+        mode = answer === '2' || answer.toLowerCase().startsWith('p') ? 'project' : 'global';
       }
       await install(mode);
       break;
@@ -467,7 +475,7 @@ ${c.bold}More info:${c.reset}
       let uMode = 'all';
       if (args.includes('--project')) {
         uMode = 'project';
-      } else if (args.includes('--global')) {
+      } else if (args.includes('--user') || args.includes('--global')) {
         uMode = 'global';
       }
       await uninstall(uMode);

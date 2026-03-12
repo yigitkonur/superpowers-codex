@@ -33,7 +33,7 @@
   "files": [
     "cli.js",
     "skills/",
-    "install-codex.sh",
+    "install.sh",
     "LICENSE",
     "README.md"
   ]
