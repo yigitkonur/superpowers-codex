@@ -1,222 +1,173 @@
 # superpowers-codex
 
-Codex-native fork of [obra/superpowers](https://github.com/obra/superpowers) — 14 composable skills that turn Codex CLI's multi-agent primitives into a structured software development workflow.
+> structured agentic workflows for [OpenAI Codex CLI](https://github.com/openai/codex). fork of [obra/superpowers](https://github.com/obra/superpowers).
 
-## Install
+## install
 
 ```bash
 npx superpowers-codex install
 ```
 
-Interactive. Shows each step. Detects existing installs. Safe to re-run.
-
-Or with flags:
+or with flags:
 
 ```bash
-npx superpowers-codex install --global    # ~/.agents/skills/ (user-level)
-npx superpowers-codex install --project   # .agents/skills/   (project-level)
+npx superpowers-codex install --user       # all sessions
+npx superpowers-codex install --project    # this project only
+npx superpowers-codex uninstall --user
+npx superpowers-codex status
 ```
 
-## What This Is
+the installer creates a symlink from `~/.agents/skills/superpowers` to the skills directory, checks `config.toml` for `multi_agent = true`. safe to re-run.
 
-[obra/superpowers](https://github.com/obra/superpowers) is a skill-based agentic workflow for Claude Code. It enforces design-before-code, TDD, two-stage code review, and evidence-based verification through 14 composable skills.
+[installation guide →](docs/codex/06-installation.md)
 
-This fork ports every skill to work natively with **OpenAI Codex CLI** — replacing Claude Code tool patterns with Codex equivalents:
+## what this is
 
-```
-  Claude Code                    Codex CLI
-  ───────────                    ─────────
-  Task tool (subagent_type)  →   spawn_agent(role="X")
-  TodoWrite                  →   update_plan
-  Skill("superpowers:X")     →   $X prefix
-  CLAUDE.md                  →   AGENTS.md
-  Edit tool                  →   apply_patch
-```
+[superpowers](https://github.com/obra/superpowers) is a skill-based development workflow by [@obra](https://github.com/obra). 14 composable skills enforce design-before-code, TDD, two-stage review, and evidence-based verification. the original targets Claude Code.
 
-[Why this fork exists →](docs/codex/01-why-fork.md)
-
-## How It Differs from Native Codex Multi-Agent
-
-Codex ships with `spawn_agent`, `send_input`, `resume_agent`, `wait`, `close_agent`, and `spawn_agents_on_csv`. Powerful primitives. But primitives without process:
+this fork ports everything to OpenAI Codex CLI, replacing tool names and invocation patterns:
 
 ```
-  Raw Codex                          With Superpowers
-  ─────────                          ────────────────
-
-  "build feature X"                  "build feature X"
-       │                                  │
-       v                                  v
-  agent writes code              $brainstorming
-       │                           questions → approaches → spec
-       v                                  │
-  maybe spawns a helper                   v
-       │                          $writing-plans
-       v                           2-5 min tasks with exact paths
-  "done"                                  │
-  (no verification)                       v
-                                  $subagent-driven-development
-                                   per task:
-                                     spawn_agent(implementer)
-                                     spawn_agent(spec-reviewer)
-                                     spawn_agent(code-reviewer)
-                                          │
-                                          v
-                                  $finishing-a-development-branch
-                                   verify → merge/PR/keep/discard
+claude code                          codex cli
+───────────                          ─────────
+Task (subagent)                  →   spawn_agent(role="X")
+TodoWrite                        →   update_plan
+Skill("superpowers:X")           →   $X prefix
+CLAUDE.md                        →   AGENTS.md
+Edit tool                        →   apply_patch
+Glob/Grep                        →   find/rg (shell)
 ```
 
-| aspect | raw codex | with superpowers |
+[why this fork →](docs/codex/01-why-this-fork.md)
+
+## how it works
+
+skills auto-activate when your task matches their description. you don't invoke them — codex checks before every response.
+
+```
+user: "build a login page"
+     │
+     ▼
+ $brainstorming ──→ questions, alternatives, spec doc
+     │
+     ▼
+ $writing-plans ──→ 2-5 min tasks with file paths
+     │
+     ▼
+ $using-git-worktrees ──→ isolated branch
+     │
+     ▼
+ $subagent-driven-development
+     │
+     ├──→ spawn_agent(implementer) ──→ builds, tests, commits
+     │         │
+     │    spawn_agent(spec-reviewer) ──→ "matches spec?"
+     │         │
+     │    spawn_agent(code-reviewer) ──→ "well built?"
+     │
+     ▼
+ $finishing-a-development-branch ──→ merge / PR
+```
+
+[architecture →](docs/codex/02-architecture.md)
+
+## vs native codex
+
+codex ships with `spawn_agent`, `send_input`, `resume_agent`, `wait`, `close_agent`. powerful primitives — but primitives without process:
+
+| | raw codex | with superpowers |
 |---|---|---|
-| design validation | none | mandatory spec review loop |
+| design phase | none | socratic brainstorming → spec |
 | task granularity | "build the feature" | 2-5 minute steps |
-| test discipline | optional | iron law: no code without failing test |
-| code review | none | two-stage: spec compliance, then quality |
-| verification | agent says "done" | fresh test run + evidence |
+| review | optional | mandatory two-stage (spec → quality) |
+| test discipline | optional | enforced RED-GREEN-REFACTOR |
+| completion claims | agent says "done" | evidence required (fresh test run) |
 | debugging | guess and retry | 4-phase root cause investigation |
-| agent roles | generic | typed: implementer, spec-reviewer, code-reviewer |
 
-[Full comparison →](docs/codex/02-vs-native-codex.md)
+[full comparison →](docs/codex/05-vs-native-codex.md)
 
-## The Pipeline
+## skills
 
-Every non-trivial task follows this pipeline. Skills fire automatically.
+14 composable skills, auto-activating:
 
-```
-  $brainstorming ──→ $writing-plans ──→ $subagent-driven-development ──→ $finishing
-     design             tasks              implement + review              merge
-```
-
-Supporting skills fire within the pipeline:
-
-- `$using-git-worktrees` — isolation before implementation
-- `$test-driven-development` — RED → GREEN → REFACTOR
-- `$systematic-debugging` — root cause before fixes
-- `$requesting-code-review` — quality gate between tasks
-- `$verification-before-completion` — evidence before claims
-
-[Full pipeline walkthrough →](docs/codex/03-pipeline.md)
-
-## The Three Iron Laws
-
-1. **TDD** — No production code without a failing test first
-2. **Root Cause First** — No fixes without Phase 1 investigation
-3. **Evidence Before Claims** — No "done" without running verification fresh
-
-## Skills Reference
-
-| phase | skill | what it does |
+| skill | when | what |
 |---|---|---|
-| design | `$brainstorming` | socratic design refinement → spec document |
-| design | `$writing-plans` | breaks spec into 2-5 min tasks with exact paths |
-| execution | `$subagent-driven-development` | fresh agent per task + two-stage review |
-| execution | `$executing-plans` | single-session batch execution |
-| execution | `$dispatching-parallel-agents` | parallel agents for independent problems |
-| discipline | `$test-driven-development` | RED-GREEN-REFACTOR cycle |
-| discipline | `$systematic-debugging` | 4-phase root cause investigation |
-| discipline | `$verification-before-completion` | evidence before claims |
-| review | `$requesting-code-review` | dispatches code-reviewer agent |
-| review | `$receiving-code-review` | evaluates feedback technically |
-| infra | `$using-git-worktrees` | isolated workspace on new branch |
-| infra | `$finishing-a-development-branch` | merge / PR / keep / discard |
-| meta | `$using-superpowers` | routes to correct skill at session start |
-| meta | `$writing-skills` | TDD for documentation |
+| `$brainstorming` | creative work | socratic design → spec document |
+| `$writing-plans` | spec approved | 2-5 min tasks with exact paths |
+| `$using-git-worktrees` | plan ready | isolated workspace on new branch |
+| `$subagent-driven-development` | plan ready | fresh agent per task + two-stage review |
+| `$executing-plans` | plan ready (alt) | single-session with checkpoints |
+| `$test-driven-development` | implementation | RED → GREEN → REFACTOR |
+| `$systematic-debugging` | bug found | 4-phase root cause analysis |
+| `$requesting-code-review` | task complete | dispatch code-reviewer agent |
+| `$receiving-code-review` | PR feedback | rigorous technical response |
+| `$verification-before-completion` | claiming "done" | evidence before assertions |
+| `$finishing-a-development-branch` | all tasks done | merge / PR / keep / discard |
+| `$dispatching-parallel-agents` | 2+ independent tasks | concurrent agent dispatch |
+| `$writing-skills` | creating skills | TDD for documentation |
+| `$using-superpowers` | every session | routing layer |
 
-[Full skills reference →](docs/codex/05-skills-reference.md)
+[skills reference →](docs/codex/03-skills-reference.md)
 
-## Configuration
+## configuration
 
-Minimum `~/.codex/config.toml`:
+minimum `~/.codex/config.toml`:
 
 ```toml
 [features]
 multi_agent = true
 ```
 
-Recommended — with agent roles:
+recommended — with agent roles:
 
 ```toml
-[features]
-multi_agent = true
-
 [agents]
 max_threads = 6
 
 [agents.implementer]
-description = "Implementation-focused agent. Follows TDD, implements one task at a time."
+description = "implementation-focused. follows TDD, one task at a time."
 
 [agents.spec-reviewer]
-description = "Spec compliance reviewer. Verifies code matches requirements exactly."
+description = "spec compliance. verifies code matches requirements exactly."
 
 [agents.code-reviewer]
-description = "Code quality reviewer. Reviews for clean code, maintainability."
+description = "code quality. reviews for clean code, maintainability."
 ```
 
-Add the pipeline to `~/.codex/AGENTS.md` — see [configuration docs →](docs/codex/06-configuration.md)
+[configuration guide →](docs/codex/04-configuration.md)
 
-## What Changed from Upstream
+## iron laws
 
-| pattern | upstream (claude code) | this fork (codex) |
+1. no production code without a failing test first
+2. no fixes without root cause investigation
+3. no "done" without running verification fresh
+
+## known limitations
+
+| missing | impact | workaround |
 |---|---|---|
-| dispatch subagent | `Task` tool | `spawn_agent` with role |
-| track plan | `TodoWrite` | `update_plan` |
-| invoke skill | `Skill("superpowers:X")` | `$X` prefix |
-| project config | `CLAUDE.md` | `AGENTS.md` |
+| no pre/post tool hooks | skills can't auto-fire on tool events | AGENTS.md instructions + `$using-superpowers` routing |
+| no visual companion | brainstorming server needs a browser | text-based flow works fully |
+| no `EnterPlanMode` | no structured plan-mode UI | `$brainstorming` triggers automatically, plans persist to files |
+| agent depth limit | `max_depth = 1`, agents can't spawn sub-agents | orchestrator pattern (parent spawns all) |
+| description-based activation | no explicit `Skill()` tool call | precise descriptions + `$skill-name` prefix in AGENTS.md |
 
-All 14 skill files, 5 prompt templates, and supplementary references updated.
+## docs
 
-[Full change log →](docs/codex/04-changes-from-upstream.md)
-
-## Uninstall
-
-```bash
-npx superpowers-codex uninstall           # removes all symlinks
-npx superpowers-codex uninstall --global   # user-level only
-npx superpowers-codex uninstall --project  # project-level only
-```
-
-Removes symlinks by scope. Optionally removes the cloned repo. Config left for you to clean up.
-
-## Status
-
-```bash
-npx superpowers-codex status
-```
-
-Shows symlink state, skill count, and config status.
-
-## Skill Discovery Paths
-
-Codex scans these locations for skills (first match wins per skill name):
-
-| Scope | Path |
+| doc | content |
 |---|---|
-| Project (current dir) | `$CWD/.agents/skills/` |
-| Project (parent) | `$CWD/../.agents/skills/` |
-| Repository root | `$REPO_ROOT/.agents/skills/` |
-| User | `~/.agents/skills/` |
-| Admin | `/etc/codex/skills/` |
-| Bundled | Ships with Codex |
+| [01-why-this-fork](docs/codex/01-why-this-fork.md) | motivation, changelog |
+| [02-architecture](docs/codex/02-architecture.md) | pipeline, tool mapping |
+| [03-skills-reference](docs/codex/03-skills-reference.md) | all 14 skills with triggers |
+| [04-configuration](docs/codex/04-configuration.md) | config.toml, AGENTS.md, agent roles |
+| [05-vs-native-codex](docs/codex/05-vs-native-codex.md) | superpowers vs raw `spawn_agent` |
+| [06-installation](docs/codex/06-installation.md) | install, uninstall, status |
 
-The installer creates a `superpowers` symlink at the user or project level. Symlinked skill folders are followed during discovery.
+## also available for
 
-## Known Limitations
+- [superpowers-droid](https://github.com/yigitkonur/superpowers-droid) — same 14 skills for Factory Droid, with 5 tool-restricted droids
+- [obra/superpowers](https://github.com/obra/superpowers) — the original, for Claude Code
 
-This fork inherits the full workflow logic from upstream but cannot replicate Claude Code features that have no Codex equivalent:
+## credits
 
-| Limitation | Impact | Workaround |
-|---|---|---|
-| **No pre/post tool hooks** | Skills can't auto-fire on tool events like Claude Code's SessionStart hook | AGENTS.md instructions prompt the agent to check for skills. The `$using-superpowers` skill handles routing. |
-| **No visual companion** | The brainstorming visual companion server (`skills/brainstorming/scripts/`) requires a browser. Codex is terminal-only. | Text-based brainstorming flow works fully. Skip the visual companion offer. |
-| **Simpler plan mode** | Claude Code's `EnterPlanMode` creates a structured plan UI. Codex's `/plan` is inline markdown. | Skills use `update_plan` for tracking. Plans persist to `docs/superpowers/plans/`. |
-| **Agent nesting depth** | `agents.max_depth = 1` by default. Agents can't spawn sub-agents. | The orchestrator pattern (parent spawns all agents sequentially) works correctly. No nesting needed. |
-| **Skill activation is description-based** | Claude Code's `Skill()` tool explicitly invokes by name. Codex auto-loads when the agent's prompt matches the skill's `description` field. | Write precise descriptions. Use `$skill-name` prefix in AGENTS.md to force activation. |
-| **`send_input` / `resume_agent` unused** | Codex has interactive agent communication tools that superpowers doesn't leverage. | Not needed for the current pipeline. Could be added for advanced interactive workflows. |
-| **Example files reference Claude Code** | `CLAUDE_MD_TESTING.md` and `CREATION-LOG.md` use Claude Code terminology. | These are example/historical documents, not active instructions. All active skill files are fully converted. |
-
-## Credits
-
-Original [superpowers](https://github.com/obra/superpowers) by [Jesse Vincent (obra)](https://github.com/obra). If this has helped you, consider [sponsoring his work](https://github.com/sponsors/obra).
-
-## License
-
-MIT — see [LICENSE](LICENSE)
+built on [superpowers](https://github.com/obra/superpowers) by [@obra](https://github.com/obra) (Jesse Vincent). MIT license.
