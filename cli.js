@@ -211,45 +211,74 @@ async function install(mode) {
   const configStep = isGlobal ? 4 : 3;
   step(configStep, totalSteps, 'Checking Codex configuration');
 
-  if (fileExists(CONFIG_FILE)) {
-    const configContent = fs.readFileSync(CONFIG_FILE, 'utf8');
-    if (/multi_agent\s*=\s*true/.test(configContent)) {
-      ok('multi_agent = true is set');
-    } else {
-      warn('multi_agent = true not found in config.toml');
-      const answer = await ask('Add it now? (y/N)');
-      if (answer.toLowerCase() === 'y') {
-        const addition = configContent.includes('[features]')
-          ? '\nmulti_agent = true\n'
-          : '\n[features]\nmulti_agent = true\n';
+  const AGENT_ROLES = `
+[agents]
+max_threads = 6
+max_depth = 1
 
+[agents.implementer]
+description = "Implementation-focused agent. Follows TDD, implements one task at a time, commits work."
+
+[agents.spec-reviewer]
+description = "Spec compliance reviewer. Verifies code matches requirements exactly — nothing more, nothing less."
+
+[agents.code-reviewer]
+description = "Code quality reviewer. Reviews for clean code, test coverage, maintainability."
+
+[agents.explorer]
+description = "Read-only codebase explorer for gathering evidence before changes are proposed."
+`;
+
+  if (fileExists(CONFIG_FILE)) {
+    let configContent = fs.readFileSync(CONFIG_FILE, 'utf8');
+    let changed = false;
+
+    // Add multi_agent = true
+    if (!/multi_agent\s*=\s*true/.test(configContent)) {
+      warn('multi_agent = true not found in config.toml');
+      const answer = await ask('Add superpowers config (multi_agent + agent roles)? (y/N)');
+      if (answer.toLowerCase() === 'y') {
         if (configContent.includes('[features]')) {
-          // Insert after [features] line
-          const updated = configContent.replace(
+          configContent = configContent.replace(
             /\[features\]/,
             '[features]\nmulti_agent = true'
           );
-          fs.writeFileSync(CONFIG_FILE, updated);
         } else {
-          fs.appendFileSync(CONFIG_FILE, addition);
+          configContent += '\n[features]\nmulti_agent = true\n';
         }
-        ok('Added multi_agent = true to config.toml');
+        changed = true;
       } else {
-        warn('Skipped. Add manually for subagent support:');
-        console.log(`    ${c.dim}[features]${c.reset}`);
-        console.log(`    ${c.dim}multi_agent = true${c.reset}`);
+        warn('Skipped. Add manually for subagent support.');
       }
+    } else {
+      ok('multi_agent = true is set');
+    }
+
+    // Add agent role definitions if missing
+    if (!/\[agents\.implementer\]/.test(configContent)) {
+      if (changed || await ask('Add agent role definitions (implementer, spec-reviewer, code-reviewer, explorer)? (y/N)').then(a => a.toLowerCase() === 'y')) {
+        configContent += AGENT_ROLES;
+        changed = true;
+        ok('Added agent role definitions');
+      }
+    } else {
+      ok('Agent roles already configured');
+    }
+
+    if (changed) {
+      fs.writeFileSync(CONFIG_FILE, configContent);
+      ok('config.toml updated');
     }
   } else {
     warn(`${CONFIG_FILE} not found`);
-    const answer = await ask('Create it with multi_agent = true? (y/N)');
+    const answer = await ask('Create config.toml with superpowers config? (y/N)');
     if (answer.toLowerCase() === 'y') {
       fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true });
       fs.writeFileSync(
         CONFIG_FILE,
-        '[features]\nmulti_agent = true\n'
+        '[features]\nmulti_agent = true\n' + AGENT_ROLES
       );
-      ok('Created config.toml');
+      ok('Created config.toml with multi_agent + agent roles');
     } else {
       warn('Skipped. Create manually for subagent support.');
     }
@@ -346,10 +375,30 @@ async function uninstall(mode) {
   step(3, 3, 'Configuration');
 
   if (fileExists(CONFIG_FILE)) {
-    info(
-      `Config at ${c.dim}${CONFIG_FILE}${c.reset} left unchanged`
-    );
-    info('Remove multi_agent and [agents.*] sections manually if desired');
+    const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+    let cleaned = raw;
+
+    // Remove [agents.*] role sections (implementer, spec-reviewer, etc.)
+    cleaned = cleaned.replace(/\n*\[agents\.[^\]]+\]\s*\n(?:[^\[]*(?:\n|$))*/g, '\n');
+
+    // Remove [agents] top-level section (max_threads, max_depth, job_max_runtime_seconds)
+    cleaned = cleaned.replace(/\n*\[agents\]\s*\n(?:(?:max_threads|max_depth|job_max_runtime_seconds)\s*=\s*[^\n]*\n?)*/g, '\n');
+
+    // Remove multi_agent = true from [features]
+    cleaned = cleaned.replace(/\nmulti_agent\s*=\s*true\s*\n?/g, '\n');
+
+    // Remove empty [features] section if nothing left in it
+    cleaned = cleaned.replace(/\[features\]\s*\n(?=\s*\[|$)/, '');
+
+    // Collapse multiple blank lines
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+
+    if (cleaned !== raw) {
+      fs.writeFileSync(CONFIG_FILE, cleaned);
+      ok('Removed multi_agent, [agents], and agent role sections from config.toml');
+    } else {
+      info('No superpowers-related config found to remove');
+    }
   }
 
   console.log(
