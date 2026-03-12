@@ -40,9 +40,10 @@ config_file = "agents/explorer.toml"
 
 | setting | purpose | default |
 |---|---|---|
-| `multi_agent` | enables `spawn_agent` / `wait` / `close_agent` | `false` (must enable) |
+| `multi_agent` | enables `spawn_agent` / `send_input` / `resume_agent` / `wait` / `close_agent` / `spawn_agents_on_csv` | `false` (must enable) |
 | `max_threads` | maximum concurrent subagents | 6 |
 | `max_depth` | max agent nesting depth | 1 (agents can't spawn sub-agents) |
+| `job_max_runtime_seconds` | per-worker timeout for `spawn_agents_on_csv` | 1800 |
 
 ## `~/.codex/AGENTS.md`
 
@@ -72,13 +73,46 @@ this file is loaded at the start of every codex session. add the superpowers pip
 
 ## skill discovery
 
-codex discovers skills by scanning `~/.agents/skills/` for directories containing `SKILL.md`. the symlink created by the installer:
+codex scans these paths for directories containing `SKILL.md` (first match wins per skill name):
+
+| scope | path |
+|---|---|
+| project (current dir) | `$CWD/.agents/skills/` |
+| project (parent) | `$CWD/../.agents/skills/` |
+| repository root | `$REPO_ROOT/.agents/skills/` |
+| user | `~/.agents/skills/` |
+| admin | `/etc/codex/skills/` |
+| bundled | ships with codex |
+
+symlinked skill folders are followed. the installer creates:
 
 ```
 ~/.agents/skills/superpowers -> ~/.codex/superpowers-codex/skills/
 ```
 
-exposes all 14 skills. they auto-load when the agent's prompt matches a skill's `description` field, or when explicitly referenced with `$skill-name`.
+which exposes all 14 skills. they auto-load when the agent's prompt matches a skill's `description` field, or when explicitly referenced with `$skill-name`.
+
+### SKILL.md format
+
+```markdown
+---
+name: skill-name          # required
+description: When to use   # required
+---
+
+free-form body (instructions for codex to follow)
+```
+
+optional: place `agents/openai.yaml` in the skill folder for metadata, icons, and MCP dependencies.
+
+## AGENTS.md loading hierarchy
+
+codex loads AGENTS.md files in this order (later overrides earlier):
+
+1. **global**: `~/.codex/AGENTS.override.md` → `~/.codex/AGENTS.md`
+2. **project**: walk from project root to cwd, each directory checked for `AGENTS.override.md` → `AGENTS.md` → fallback filenames
+3. **merge**: files concatenated root-to-cwd (closer to cwd = higher priority)
+4. **size cap**: `project_doc_max_bytes` (default 32KB)
 
 ## per-project configuration
 
@@ -90,3 +124,9 @@ trust_level = "trusted"
 ```
 
 for project-specific workflow overrides, create an `AGENTS.md` in the project root. project-level instructions take precedence over global `~/.codex/AGENTS.md`.
+
+you can also set fallback filenames for AGENTS.md discovery:
+
+```toml
+project_doc_fallback_filenames = ["TEAM_GUIDE.md", ".agents.md"]
+```

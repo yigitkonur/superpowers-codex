@@ -9,6 +9,8 @@ Skills reference Claude Code tool names. When you encounter these in a skill, us
 | `Task` tool (dispatch subagent) | `spawn_agent` | Requires `features.multi_agent = true` in config.toml |
 | Multiple `Task` calls (parallel) | Multiple `spawn_agent` calls | Max 6 concurrent (configurable via `agents.max_threads`) |
 | Task returns result | `wait` | Long-polling, up to 1 hour per call |
+| Send input to running agent | `send_input` | Interactive communication with spawned agent |
+| Resume paused agent | `resume_agent` | Continue a paused agent's execution |
 | Task completes | `close_agent` | Frees thread slot when done |
 | Batch fan-out to N workers | `spawn_agents_on_csv` | CSV-driven parallel execution with `report_agent_job_result` |
 | `TodoWrite` (task tracking) | `update_plan` | Native plan tracking with checkboxes |

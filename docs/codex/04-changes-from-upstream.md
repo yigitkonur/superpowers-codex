@@ -11,6 +11,8 @@ this documents every pattern change from [obra/superpowers](https://github.com/o
 | parallel dispatch | multiple `Task` calls | multiple `spawn_agent` calls |
 | batch fan-out | N/A | `spawn_agents_on_csv` |
 | wait for result | Task returns inline | `wait` (long-polling, up to 1hr) |
+| send input to running agent | N/A | `send_input` |
+| resume paused agent | N/A | `resume_agent` |
 | free agent slot | automatic | `close_agent` (required) |
 | track plan | `TodoWrite` | `update_plan` |
 | invoke skill | `Skill("superpowers:X")` | `$X` prefix |

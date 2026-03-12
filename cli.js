@@ -288,23 +288,25 @@ async function install(mode) {
 
 // ── Uninstall ───────────────────────────────────────────────────────────────
 
-async function uninstall() {
+async function uninstall(mode) {
   console.log(
     `\n${c.bold}${c.magenta}superpowers-codex${c.reset} ${c.dim}— uninstaller${c.reset}\n`
   );
 
+  const removeGlobal = mode === 'global' || mode === 'all';
+  const removeProject = mode === 'project' || mode === 'all';
   let removed = false;
 
   // ── Step 1: Remove symlink ──
 
-  step(1, 3, 'Removing skills symlink');
+  step(1, 3, `Removing skills symlink (${mode === 'all' ? 'all scopes' : mode})`);
 
   // Check global
-  if (isSymlink(GLOBAL_SYMLINK)) {
+  if (removeGlobal && isSymlink(GLOBAL_SYMLINK)) {
     fs.unlinkSync(GLOBAL_SYMLINK);
     ok(`Removed ${GLOBAL_SYMLINK}`);
     removed = true;
-  } else {
+  } else if (removeGlobal) {
     info('No global symlink found');
   }
 
@@ -315,11 +317,11 @@ async function uninstall() {
     'skills',
     'superpowers'
   );
-  if (isSymlink(projectSymlink)) {
+  if (removeProject && isSymlink(projectSymlink)) {
     fs.unlinkSync(projectSymlink);
     ok(`Removed ${projectSymlink}`);
     removed = true;
-  } else {
+  } else if (removeProject) {
     info('No project-level symlink found');
   }
 
@@ -428,8 +430,10 @@ ${c.bold}Usage:${c.reset}
   npx superpowers-codex install            Interactive install (prompts for scope)
   npx superpowers-codex install --global   User-level install (~/.agents/skills/)
   npx superpowers-codex install --project  Project-level install (.agents/skills/)
-  npx superpowers-codex uninstall          Remove symlinks and optionally clean up
-  npx superpowers-codex status             Show current install state
+  npx superpowers-codex uninstall           Remove all symlinks and optionally clean up
+  npx superpowers-codex uninstall --global  Remove user-level symlink only
+  npx superpowers-codex uninstall --project Remove project-level symlink only
+  npx superpowers-codex status              Show current install state
 
 ${c.bold}What it does:${c.reset}
   Installs 14 agentic workflow skills for OpenAI Codex CLI.
@@ -459,9 +463,16 @@ ${c.bold}More info:${c.reset}
       break;
     }
     case 'uninstall':
-    case 'remove':
-      await uninstall();
+    case 'remove': {
+      let uMode = 'all';
+      if (args.includes('--project')) {
+        uMode = 'project';
+      } else if (args.includes('--global')) {
+        uMode = 'global';
+      }
+      await uninstall(uMode);
       break;
+    }
     case 'status':
       status();
       break;

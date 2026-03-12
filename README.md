@@ -37,7 +37,7 @@ This fork ports every skill to work natively with **OpenAI Codex CLI** — repla
 
 ## How It Differs from Native Codex Multi-Agent
 
-Codex ships with `spawn_agent`, `wait`, and `close_agent`. Powerful primitives. But primitives without process:
+Codex ships with `spawn_agent`, `send_input`, `resume_agent`, `wait`, `close_agent`, and `spawn_agents_on_csv`. Powerful primitives. But primitives without process:
 
 ```
   Raw Codex                          With Superpowers
@@ -169,10 +169,12 @@ All 14 skill files, 5 prompt templates, and supplementary references updated.
 ## Uninstall
 
 ```bash
-npx superpowers-codex uninstall
+npx superpowers-codex uninstall           # removes all symlinks
+npx superpowers-codex uninstall --global   # user-level only
+npx superpowers-codex uninstall --project  # project-level only
 ```
 
-Removes symlinks. Optionally removes the cloned repo. Config left for you to clean up.
+Removes symlinks by scope. Optionally removes the cloned repo. Config left for you to clean up.
 
 ## Status
 
@@ -181,6 +183,35 @@ npx superpowers-codex status
 ```
 
 Shows symlink state, skill count, and config status.
+
+## Skill Discovery Paths
+
+Codex scans these locations for skills (first match wins per skill name):
+
+| Scope | Path |
+|---|---|
+| Project (current dir) | `$CWD/.agents/skills/` |
+| Project (parent) | `$CWD/../.agents/skills/` |
+| Repository root | `$REPO_ROOT/.agents/skills/` |
+| User | `~/.agents/skills/` |
+| Admin | `/etc/codex/skills/` |
+| Bundled | Ships with Codex |
+
+The installer creates a `superpowers` symlink at the user or project level. Symlinked skill folders are followed during discovery.
+
+## Known Limitations
+
+This fork inherits the full workflow logic from upstream but cannot replicate Claude Code features that have no Codex equivalent:
+
+| Limitation | Impact | Workaround |
+|---|---|---|
+| **No pre/post tool hooks** | Skills can't auto-fire on tool events like Claude Code's SessionStart hook | AGENTS.md instructions prompt the agent to check for skills. The `$using-superpowers` skill handles routing. |
+| **No visual companion** | The brainstorming visual companion server (`skills/brainstorming/scripts/`) requires a browser. Codex is terminal-only. | Text-based brainstorming flow works fully. Skip the visual companion offer. |
+| **Simpler plan mode** | Claude Code's `EnterPlanMode` creates a structured plan UI. Codex's `/plan` is inline markdown. | Skills use `update_plan` for tracking. Plans persist to `docs/superpowers/plans/`. |
+| **Agent nesting depth** | `agents.max_depth = 1` by default. Agents can't spawn sub-agents. | The orchestrator pattern (parent spawns all agents sequentially) works correctly. No nesting needed. |
+| **Skill activation is description-based** | Claude Code's `Skill()` tool explicitly invokes by name. Codex auto-loads when the agent's prompt matches the skill's `description` field. | Write precise descriptions. Use `$skill-name` prefix in AGENTS.md to force activation. |
+| **`send_input` / `resume_agent` unused** | Codex has interactive agent communication tools that superpowers doesn't leverage. | Not needed for the current pipeline. Could be added for advanced interactive workflows. |
+| **Example files reference Claude Code** | `CLAUDE_MD_TESTING.md` and `CREATION-LOG.md` use Claude Code terminology. | These are example/historical documents, not active instructions. All active skill files are fully converted. |
 
 ## Credits
 

@@ -13,6 +13,9 @@ the problem: every skill was authored for **claude code**. the tool names, dispa
 | invoke a skill | `Skill("superpowers:name")` tool | `$name` prefix reference |
 | edit a file | `Edit` tool | `apply_patch` tool |
 | search files | `Glob` / `Grep` tools | `file_search` / shell `rg` |
+| send input to agent | N/A | `send_input` tool |
+| resume paused agent | N/A | `resume_agent` tool |
+| batch fan-out | N/A | `spawn_agents_on_csv` tool |
 | project config | `CLAUDE.md` | `AGENTS.md` |
 | enter plan mode | `EnterPlanMode` tool | `/plan` command |
 
